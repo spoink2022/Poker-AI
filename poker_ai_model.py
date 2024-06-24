@@ -24,13 +24,16 @@ class CustomFCNetwork(nn.Module):
         self.hidden_layers = nn.ModuleList()
         for i in range(0, len(network_shape)-2):
             self.hidden_layers.append(nn.Linear(network_shape[i], network_shape[i+1]))
+            
+        self.bet_size_layer = nn.Linear(network_shape[-2], 1)
     
     def forward(self, x):
         for layer in self.hidden_layers:
             x = self.act_func(layer(x))
         
+        bet_size = self.bet_size_layer(x)
         x = self.output_layer(x)
-        return x
+        return x, bet_size
     
 def mnist_process_batch(x, y):
     x = x.view(x.shape[0], -1)/255
@@ -44,8 +47,9 @@ def train_model(model, train_loader, optimizer, criterion, epochs=10, process_ba
             if process_batch:
                 x, y = process_batch(x, y)
             x, y = x.to(device=device), y.to(device=device)
-            y_pred = model(x)
-            loss = criterion(y_pred, y)
+            y_pred, bet_pred = model(x)
+            # print(y_pred.shape, y[:, :3].shape, bet_pred.shape, y[:, -1:].shape)
+            loss = criterion(y_pred, y[:, :3]) + nn.BCEWithLogitsLoss()(bet_pred, y[:, -1:])
             loss.backward()
             optimizer.step()
             # if i % 100 == 0:
@@ -72,7 +76,9 @@ def test_model(model, test_loader, process_batch=None):
             if process_batch:
                 x, y = process_batch(x, y)
             x, y = x.to(device=device), y.to(device=device)
-            y_pred = model(x)
+            y_pred, bet_size = model(x)
+            y_pred = nn.functional.softmax(y_pred, dim=1)
+            # print(y_pred, "\n", y)
             _, predictions = y_pred.max(1)
             _, y = y.max(1)
             total_correct += (predictions == y).sum()

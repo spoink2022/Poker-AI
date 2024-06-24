@@ -82,13 +82,13 @@ def hand_to_tensor(hand: kdp.PokerHand):
     # Get prior actions tensor
     prior_actions = get_prior_actions_tensor(hand.prior_actions)
     
-    # Concatenate all tensors
-    hand_input_tensor = torch.cat([player_position, player_stack, hole_cards, prior_actions])
-    
     # Get player action tensor
     my_action = action_to_tensor(hand.my_action)
     
-    return hand_input_tensor, my_action
+    # Concatenate all tensors
+    hand_input_tensor = torch.cat([player_position, player_stack, hole_cards, prior_actions, my_action[-1:]])
+    
+    return hand_input_tensor, my_action[:4]
 
 def read_and_parse_games_from_folder(folder_path):
     poker_hands = []
@@ -120,9 +120,9 @@ if __name__ == '__main__':
     filename = r'poker_data'
     poker_hands = read_and_parse_games_from_folder(filename)
     poker_hand_dataset = PreFlopDataset(poker_hands)
-    #check_hand_tensor_size(poker_hands)
+    check_hand_tensor_size(poker_hands)
     print(len(poker_hand_dataset))
-    hand = poker_hands[5]
+    # hand = poker_hands[5]
     # print(hand.prior_actions)
     
     # max_start_money = max([hand.start_money for hand in poker_hands])
