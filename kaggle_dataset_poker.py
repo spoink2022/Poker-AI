@@ -237,8 +237,8 @@ def parse_game(game_text):
         allin_amount = my_action.player_stack
 
       # Print results
-      print(f"Minimum Call Amount: {min_call_amount}")
-      print(f"Minimum Raise Amount: {min_raise_amount}")
+    #   print(f"Minimum Call Amount: {min_call_amount}")
+    #   print(f"Minimum Raise Amount: {min_raise_amount}")
 
 
 
@@ -254,7 +254,7 @@ def read_and_parse_games(filename):
     return poker_hands
 
 def main():
-    filename = r'Poker-AI/poker_data/File196.txt'
+    filename = r'poker_data/File196.txt'
     poker_hands = read_and_parse_games(filename)
 
     for hand in poker_hands:

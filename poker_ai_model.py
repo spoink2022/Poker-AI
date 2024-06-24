@@ -39,7 +39,7 @@ def mnist_process_batch(x, y):
     
 def train_model(model, train_loader, optimizer, criterion, epochs=10, process_batch=None):
     for epoch in tqdm(range(epochs), desc="Epochs"):
-        for i, (x, y) in enumerate(tqdm(train_loader, desc="Batches", leave=False)):
+        for i, (x, y) in enumerate(tqdm(train_loader, desc="Batches", leave=True)):
             optimizer.zero_grad()
             if process_batch:
                 x, y = process_batch(x, y)
@@ -50,8 +50,36 @@ def train_model(model, train_loader, optimizer, criterion, epochs=10, process_ba
             optimizer.step()
             # if i % 100 == 0:
             #     print(f"Epoch {epoch}, Iteration {i}, Loss: {loss.item()}")
+            
+def evaluate_model(model, test_loader, criterion, process_batch=None):
+    model.eval()
+    with torch.no_grad():
+        total_loss = 0
+        for x, y in test_loader:
+            if process_batch:
+                x, y = process_batch(x, y)
+            x, y = x.to(device=device), y.to(device=device)
+            y_pred = model(x)
+            total_loss += criterion(y_pred, y).item()
+        return total_loss/len(test_loader)
     
-def test_model():
+def test_model(model, test_loader, process_batch=None):
+    model.eval()
+    with torch.no_grad():
+        total_correct = 0
+        total_samples = 0
+        for x, y in test_loader:
+            if process_batch:
+                x, y = process_batch(x, y)
+            x, y = x.to(device=device), y.to(device=device)
+            y_pred = model(x)
+            _, predictions = y_pred.max(1)
+            _, y = y.max(1)
+            total_correct += (predictions == y).sum()
+            total_samples += y.size(0)
+        return total_correct/total_samples
+    
+def mnist_check_model():
     mnist_data = datasets.MNIST("data", train=True, download=True, transform=transforms.Compose([transforms.ToTensor()]))
     test_fraction = 4/5
     test_len, train_len = math.floor(len(mnist_data)*test_fraction), math.ceil(len(mnist_data)*(1-test_fraction))
@@ -74,7 +102,7 @@ def test_model():
     print(model(x))
     
 if __name__ == "__main__":
-    test_model()
+    mnist_check_model()
 
 
 
