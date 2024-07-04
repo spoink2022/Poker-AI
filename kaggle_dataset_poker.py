@@ -256,9 +256,19 @@ def read_and_parse_games(filename):
 def main():
     filename = r'poker_data/File196.txt'
     poker_hands = read_and_parse_games(filename)
-
+    
+    start_moneys = []
+    
+    my_actions = []
     for hand in poker_hands:
-        print(hand)
+        start_moneys.append(hand.start_money)
+        print(hand.my_action)
+        for actions in hand.prior_actions:
+            print(actions.player_stack)
+            print(actions.player_bet)
+        
+    print("Max start money: ", max(start_moneys))
+    print("Min start money: ", min(start_moneys))
 
 if __name__ == "__main__":
     main()

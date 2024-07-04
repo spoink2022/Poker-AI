@@ -41,31 +41,40 @@ def mnist_process_batch(x, y):
     return x, y
     
 def train_model(model, train_loader, optimizer, criterion, epochs=10, process_batch=None):
-    for epoch in tqdm(range(epochs), desc="Epochs"):
-        for i, (x, y) in enumerate(tqdm(train_loader, desc="Batches", leave=True)):
+    train_loss_list = []
+    for epoch in tqdm(range(epochs), desc="Epochs", leave=False):
+        total_loss = 0
+        total_sample = 0
+        for i, (x, y) in enumerate(tqdm(train_loader, desc="Batches", leave=False)):
             optimizer.zero_grad()
+            total_sample += x.shape[0]
             if process_batch:
                 x, y = process_batch(x, y)
             x, y = x.to(device=device), y.to(device=device)
             y_pred, bet_pred = model(x)
             # print(y_pred.shape, y[:, :3].shape, bet_pred.shape, y[:, -1:].shape)
             loss = criterion(y_pred, y[:, :3]) + nn.BCEWithLogitsLoss()(bet_pred, y[:, -1:])
+            total_loss += loss.item()
             loss.backward()
             optimizer.step()
             # if i % 100 == 0:
             #     print(f"Epoch {epoch}, Iteration {i}, Loss: {loss.item()}")
-            
+        train_loss_list.append(total_loss/total_sample)
+    return train_loss_list
+        
 def evaluate_model(model, test_loader, criterion, process_batch=None):
     model.eval()
     with torch.no_grad():
         total_loss = 0
+        total_sample = 0
         for x, y in test_loader:
             if process_batch:
                 x, y = process_batch(x, y)
             x, y = x.to(device=device), y.to(device=device)
+            total_sample += x.shape[0]
             y_pred = model(x)
             total_loss += criterion(y_pred, y).item()
-        return total_loss/len(test_loader)
+        return total_loss/total_sample
     
 def test_model(model, test_loader, process_batch=None):
     model.eval()
