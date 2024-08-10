@@ -20,12 +20,21 @@ def rearrange_list(original_list, indices):
     
     return list(map(original_list.__getitem__, indices))
 
+class PokerState():
+    def __init__(self, community_cards, pot_size, round_call_amount, player_round_bet_size, player_stack):
+        self.community_cards = community_cards
+        self.pot_size = pot_size
+        self.round_call_amount = round_call_amount
+        self.player_round_bet_size = player_round_bet_size
+        self.player_stack = player_stack
+
 class PokerRound():
-    def __init__(self, pti, players, round_data):
+    def __init__(self, pti, players, round_data, pot_size):
         self.pti = pti # Player to Index
         self.players = players
         self.round_data = round_data
         self.round_info = []
+        self.pot_size = pot_size
         
         if round_data["name"] in ROUND_NAMES:
             self.process_round(round_data)
@@ -43,6 +52,8 @@ class PokerRound():
                 player_name = out_match.group(1)
                 action_name = "timed out"
                 bet_size = None
+                
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, self.players[self.pti[player_name]].round_bet_size)
                 
                 self.players[self.pti[player_name]].insert_round_action(round_data["name"], (action_name, bet_size))
                 
@@ -76,6 +87,8 @@ class PokerGame():
         self.button_seat = None
         self.game_data = game_data
         self.community_cards = {'FLOP': [], 'TURN': [], 'RIVER': []}
+        self.pot_size = 0 # Keeps track of pot size
+        self.round_call_amount = 0 # Keeps track of the amount required to call
         self.process_game()
     
     def process_game(self):
@@ -123,21 +136,36 @@ class PokerGame():
                 player_blind = match.group(2)
                 player_bet_size = match.group(3)
                 action_name = player_blind
-                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size))
+                
+                player = self.players[self.pti[player_name]]
+                
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, player.round_bet_size)
+                player.insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                
+                self.pot_size += float(player_bet_size)
+                player.stack -= float(player_bet_size)
                 
             elif straddle_match:
                 player_name = straddle_match.group(1)
                 player_bet_size = straddle_match.group(2)
                 action_name = "straddle"
-                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size))
+                
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, self.players[self.pti[player_name]].round_bet_size)
+                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                
+                self.pot_size += float(player_bet_size)
                 
             elif post_match:
                 player_name = post_match.group(1)
                 player_bet_size = post_match.group(2)
                 action_name = "posts"
-                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size))
+                
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, self.players[self.pti[player_name]].round_bet_size)
+                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                
+                self.pot_size += float(player_bet_size)
             
-            # Correct
+            # Remove player if they are sitting out
             elif out_match:
                 player_name = out_match.group(1)
                 if player_name in self.pti:
@@ -196,7 +224,9 @@ class PokerGame():
                 
             
         for round_name, round_lines in rounds_data.items():
-            self.rounds.append(PokerRound(self.pti, self.players, {"name": round_name, "lines": round_lines}))
+            poker_round = PokerRound(self.pti, self.players, {"name": round_name, "lines": round_lines}, self.pot_size)
+            self.pot_size = poker_round.pot_size
+            self.rounds.append(poker_round)
         
     def __repr__(self):
         display = "--------------------------------\n"
