@@ -67,6 +67,7 @@ class PokerPlayer():
         if cycle_num is None:
             self.actions[round_name].append(action)
             self.round_bet_size[round_name] += action[1]
+            self.stack -= action[1]
         if isinstance(cycle_num, int) and cycle_num < 1:
             raise ValueError("Invalid cycle number, must be at least 1")
         if isinstance(cycle_num, int):

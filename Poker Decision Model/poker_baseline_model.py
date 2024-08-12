@@ -16,7 +16,7 @@ def profit_function(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, c
     profit_slope = win_rate - lose_rate + avg_tied_cost_rate
     return profit, profit_slope
 
-def get_bet_size(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, stack_size, min_raise, tight_factor):
+def get_bet_size(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, stack_size, min_raise, tight_factor=0.5):
     bet_size_root, bet_size_slope = bet_size_function(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, 0)
     call_profit, profit_slope = profit_function(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, call_size)
     min_raise_profit, _ = profit_function(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, min_raise)
@@ -28,7 +28,7 @@ def get_bet_size(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call
     rec_bet_size_profit, _ = profit_function(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, rec_bet_size)
     
     if stability >= max(0, min(0.9, tight_factor*1.4)) and profit_slope > 0:
-        return 'all_in', stack_size
+        return 'allin', stack_size
     
     if stability >= tight_factor:
         if call_size > 0 and rec_bet_size > min_raise and profit_slope > 0 and rec_bet_size_profit > 0:

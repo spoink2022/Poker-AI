@@ -27,6 +27,9 @@ class PokerState():
         self.round_call_amount = round_call_amount
         self.player_round_bet_size = player_round_bet_size
         self.player_stack = player_stack
+        
+    def __repr__(self) -> str:
+        return f"Community Cards: {self.community_cards}\nPot Size: {self.pot_size}\nRound Call Amount: {self.round_call_amount}\nPlayer Round Bet Size: {self.player_round_bet_size}\nPlayer Stack: {self.player_stack}\n"
 
 class PokerRound():
     def __init__(self, pti, players, round_data, pot_size):
@@ -35,6 +38,7 @@ class PokerRound():
         self.round_data = round_data
         self.round_info = []
         self.pot_size = pot_size
+        self.round_call_amount = 0
         
         if round_data["name"] in ROUND_NAMES:
             self.process_round(round_data)
@@ -42,6 +46,7 @@ class PokerRound():
             raise ValueError("Invalid round name")
         
     def process_round(self, round_data):
+        round_name = round_data["name"]
         for line in round_data["lines"]:            
             # Extract the player name and action using regular expressions
             match = re.match(r'Player (.*) (\w+)', line)
@@ -51,30 +56,37 @@ class PokerRound():
             if out_match:
                 player_name = out_match.group(1)
                 action_name = "timed out"
-                bet_size = None
+                bet_size = 0
                 
-                poker_state = PokerState([], self.pot_size, self.round_call_amount, self.players[self.pti[player_name]].round_bet_size)
+                player = self.players[self.pti[player_name]]
                 
-                self.players[self.pti[player_name]].insert_round_action(round_data["name"], (action_name, bet_size))
+                poker_state = None
                 
-                self.round_info.append((player_name, action_name, bet_size))
+                player.insert_round_action(round_name, (action_name, bet_size, poker_state))
+                self.round_info.append((player_name, action_name, bet_size, poker_state))
                 
-            elif match:
+            elif match: 
                 player_name = match.group(1)
                 action_name = match.group(2)
-                bet_size = float(number_match.group(1)) if number_match else None
+                bet_size = float(number_match.group(1)) if number_match else 0
                 
-                self.players[self.pti[player_name]].insert_round_action(round_data["name"], (action_name, bet_size))
-                    
-                self.round_info.append((player_name, action_name, bet_size))
+                player = self.players[self.pti[player_name]]
+                
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, player.round_bet_size[round_name], player.stack)
+                
+                player.insert_round_action(round_name, (action_name, bet_size, poker_state))
+                self.round_info.append((player_name, action_name, bet_size, poker_state))
+                
+                self.pot_size += float(bet_size)
+                self.round_call_amount = player.round_bet_size[round_name] if player.round_bet_size[round_name] > self.round_call_amount else self.round_call_amount
                 
     def __repr__(self):
         display = f"{self.round_data['name']}:\n"
-        for player_name, action_name, bet_size in self.round_info:
+        for player_name, action_name, bet_size, poker_state in self.round_info:
             if bet_size is None:
                 display += f"{player_name} {action_name}\n"
             else:
-                display += f"{player_name} {action_name} {bet_size}\n"
+                display += f"{player_name} {action_name} {bet_size} \n{poker_state}\n"
         display += "\n"
         return display
     
@@ -134,35 +146,41 @@ class PokerGame():
             if match:
                 player_name = match.group(1)
                 player_blind = match.group(2)
-                player_bet_size = match.group(3)
+                player_bet_size = float(match.group(3))
                 action_name = player_blind
                 
                 player = self.players[self.pti[player_name]]
                 
-                poker_state = PokerState([], self.pot_size, self.round_call_amount, player.round_bet_size)
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, player.round_bet_size["PREFLOP"], player.stack)
                 player.insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
                 
+                self.round_call_amount = player.round_bet_size['PREFLOP'] if player.round_bet_size['PREFLOP'] > self.round_call_amount else self.round_call_amount
                 self.pot_size += float(player_bet_size)
-                player.stack -= float(player_bet_size)
                 
             elif straddle_match:
                 player_name = straddle_match.group(1)
-                player_bet_size = straddle_match.group(2)
+                player_bet_size = float(straddle_match.group(2))
                 action_name = "straddle"
                 
-                poker_state = PokerState([], self.pot_size, self.round_call_amount, self.players[self.pti[player_name]].round_bet_size)
-                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                player = self.players[self.pti[player_name]]
                 
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, player.round_bet_size['PREFLOP'], player.stack)
+                player.insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                
+                self.round_call_amount = player.round_bet_size['PREFLOP'] if player.round_bet_size['PREFLOP'] > self.round_call_amount else self.round_call_amount
                 self.pot_size += float(player_bet_size)
                 
             elif post_match:
                 player_name = post_match.group(1)
-                player_bet_size = post_match.group(2)
+                player_bet_size = float(post_match.group(2))
                 action_name = "posts"
                 
-                poker_state = PokerState([], self.pot_size, self.round_call_amount, self.players[self.pti[player_name]].round_bet_size)
-                self.players[self.pti[player_name]].insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                player = self.players[self.pti[player_name]]
                 
+                poker_state = PokerState([], self.pot_size, self.round_call_amount, player.round_bet_size['PREFLOP'], player.stack)
+                player.insert_round_action("PREFLOP", (action_name, player_bet_size, poker_state))
+                
+                self.round_call_amount = player.round_bet_size['PREFLOP'] if player.round_bet_size['PREFLOP'] > self.round_call_amount else self.round_call_amount
                 self.pot_size += float(player_bet_size)
             
             # Remove player if they are sitting out
@@ -241,7 +259,7 @@ class PokerGame():
         return display
 
 class PokerDataset(Dataset):
-    def __init__(self, data_dir, main_player_name, transform = None):
+    def __init__(self, data_dir, main_player_name, transform = None, balance_data = False, include_actions = ['calls', 'raises', 'bets', 'folds', 'checks', 'allin']):
         self.data_dir = data_dir
         self.main_player_name = main_player_name
         self.transform = transform
@@ -256,10 +274,49 @@ class PokerDataset(Dataset):
         self.cards = [rank+suit for suit in suits for rank in ranks]
         self.max_pos = self._get_max_pos()
         self._get_mean_std_features()
-
+        
+        self.output_indices = {action_name: [] for action_name in include_actions}
+        self.processed_outputs = []
+        
+        index = 0
+        for i in tqdm(range(len(self.games)), desc="Processing Items", leave=True):
+            input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs = self.process_item(i)
+            action_name = ACTION_NAMES[label_action_tensor.argmax().item()]
+            
+            if action_name not in include_actions:
+                continue
+            
+            output_datum = (input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs)
+            self.processed_outputs.append(output_datum)
+            
+            self.output_indices[action_name].append(index)
+            index += 1
+            
+        # Balance the data for each action type unless 0 indices in output_indices
+        # Randomly repeats indices uniformly for each acttion type to the largest action type length
+        if balance_data:
+            self._balance_data()
+            return 
+        
+        self.balanced_indices = []
+        for indices in self.output_indices.values():
+            self.balanced_indices += indices
+            
+    def _balance_data(self):
+        max_length = max(len(indices) for indices in self.output_indices.values())
+        for action_name, indices in self.output_indices.items():
+            if len(indices) > 0:
+                multiple = max_length // len(indices)
+                self.output_indices[action_name] = indices*multiple
+                remainder = max_length % len(indices)
+                self.output_indices[action_name] += np.random.choice(indices, remainder, replace=False).tolist()
+        
+        self.balanced_indices = []
+        for indices in self.output_indices.values():
+            self.balanced_indices += indices
         
     def __len__(self):
-        return len(self.games)
+        return len(self.balanced_indices)
 
     def read_games(self):
         for filename in os.listdir(self.data_dir):
@@ -301,16 +358,30 @@ class PokerDataset(Dataset):
     def _get_mean_std_features(self):
         all_stacks = []
         all_bets = []
+        all_call_sizes = []
+        all_pot_sizes = []
+        all_min_raises = []
         for game in self.games:
             game_stacks = torch.tensor([player.stack for player in game.players])
             all_stacks.append(game_stacks)
             for round in game.rounds:
-                for player_name, action_name, bet_size in round.round_info:
+                for player_name, action_name, bet_size, poker_state in round.round_info:
                     if bet_size is not None and bet_size != 0:
                         all_bets.append(bet_size)
+                    if poker_state is not None:
+                        all_call_sizes.append(poker_state.round_call_amount - poker_state.player_round_bet_size)
+                        all_pot_sizes.append(poker_state.pot_size)
+                        all_min_raises.append(2*poker_state.round_call_amount)
+                        
         all_bets = torch.tensor(all_bets)
         all_stacks = torch.cat(all_stacks, dim=0)
+        all_call_sizes = torch.tensor(all_call_sizes)
+        all_pot_sizes = torch.tensor(all_pot_sizes)
+        all_min_raises = torch.tensor(all_min_raises)
         
+        self.call_mean, self.call_std = all_call_sizes.mean(), all_call_sizes.std()
+        self.pot_mean, self.pot_std = all_pot_sizes.mean(), all_pot_sizes.std()
+        self.min_raise_mean, self.min_raise_std = all_min_raises.mean(), all_min_raises.std()
         self.stack_mean, self.stack_std = all_stacks.mean(), all_stacks.std()
         self.bet_mean, self.bet_std = all_bets.mean(), all_bets.std()
     
@@ -351,36 +422,77 @@ class PokerDataset(Dataset):
         player_idx = game.pti[main_player_name]
         num_players = len(game.players)
         
+        baseline_inputs = {'call_size': 0, 'pot_size': 0, 'stack_size': 0, 'min_raise': 0, 'hole_cards': 0, 'community_cards': 0, 'num_players': 0}
         num_actions = len(round_info)
         past_actions_tensor = []
-        action_tensor_size = len(ACTION_NAMES) + 2
+        
+        # Includes action_tensor (11), stack_size (1), bet_size (1), call_size (1), pot_size (1), stack_size (1), min_raise (1), num_players (1)
+        action_tensor_size = len(ACTION_NAMES) + 6
         
         i = 1
         main_player_action_tensor = None
+        main_player_input_tensor = None
         while len(past_actions_tensor) < num_players:
             if num_actions < i:
                 break
-            player_name, action_name, bet_size = round_info[-i]
+            player_name, action_name, bet_size, player_state = round_info[-i]
             i += 1
             bet_size = float(bet_size) if bet_size is not None else 0
             if player_name == main_player_name:
-                if action_name == "timed out":
+                if action_name == "timed out": # Skip timed out actions
                     continue
+                
+                call_size = player_state.round_call_amount - player_state.player_round_bet_size
+                pot_size = player_state.pot_size
+                stack_size = player_state.player_stack
+                min_raise = 2*player_state.round_call_amount
+                num_players_norm = len(game.players)/self.max_pos
+                
+                call_size_tensor = ((call_size - self.call_mean) / self.call_std).unsqueeze(0)
+                pot_size_tensor = ((pot_size - self.pot_mean) / self.pot_std).unsqueeze(0)
+                stack_size_tensor = ((stack_size - self.stack_mean) / self.stack_std).unsqueeze(0)
+                min_raise_tensor = ((min_raise - self.min_raise_mean) / self.min_raise_std).unsqueeze(0)
+                num_players_tensor = torch.tensor(num_players_norm).unsqueeze(0)
+                
                 action_idx = ACTION_NAMES.index(action_name)
                 action_tensor = self.identity[action_idx][:len(ACTION_NAMES)]
                 norm_bet_size = ((bet_size - self.bet_mean) / self.bet_std).unsqueeze(0)
                 main_player_action_tensor = torch.cat([action_tensor, norm_bet_size], dim=0)
+                main_player_input_tensor = torch.cat([call_size_tensor, pot_size_tensor, stack_size_tensor, min_raise_tensor, num_players_tensor], dim=0)
+                
+                baseline_inputs['call_size'] = call_size
+                baseline_inputs['pot_size'] = pot_size
+                baseline_inputs['stack_size'] = stack_size
+                baseline_inputs['min_raise'] = min_raise
+                baseline_inputs['hole_cards'] = game.players[game.pti[player_name]].hole_cards
+                baseline_inputs['community_cards'] = game.community_cards[round_name] if round_name in game.community_cards else []
+                baseline_inputs['num_players'] = len(game.players)
                 continue
             if main_player_action_tensor == None:
                 continue
             if action_name == "timed out":
                 continue
+            
+            call_size = player_state.round_call_amount - player_state.player_round_bet_size
+            pot_size = player_state.pot_size
+            stack_size = player_state.player_stack
+            min_raise = 2*player_state.round_call_amount
+            num_players_norm = len(game.players)/self.max_pos
+            
+            call_size_tensor = ((call_size - self.call_mean) / self.call_std).unsqueeze(0)
+            pot_size_tensor = ((pot_size - self.pot_mean) / self.pot_std).unsqueeze(0)
+            stack_size_tensor = ((stack_size - self.stack_mean) / self.stack_std).unsqueeze(0)
+            min_raise_tensor = ((min_raise - self.min_raise_mean) / self.min_raise_std).unsqueeze(0)
+            num_players_tensor = torch.tensor(num_players_norm).unsqueeze(0)
+            
             action_idx = ACTION_NAMES.index(action_name)
             action_tensor = self.identity[action_idx][:len(ACTION_NAMES)]
             player = game.players[game.pti[player_name]]
             player_norm_stack = ((player.stack - self.stack_mean) / self.stack_std).unsqueeze(0)
             norm_bet_size = ((bet_size - self.bet_mean) / self.bet_std).unsqueeze(0)
-            past_actions_tensor.append(torch.cat([action_tensor, player_norm_stack, norm_bet_size], dim=0))
+            past_action_tensor = torch.cat([action_tensor, player_norm_stack, norm_bet_size, call_size_tensor, pot_size_tensor, stack_size_tensor, min_raise_tensor], dim=0)
+            #past_action_tensor = torch.cat([action_tensor, player_norm_stack, norm_bet_size], dim=0)
+            past_actions_tensor.append(past_action_tensor)
         
         past_actions_tensor = past_actions_tensor if past_actions_tensor else [torch.zeros(size=(1,))]
         #length, sizes = len(past_actions_tensor), [action_tensor.shape for action_tensor in past_actions_tensor]
@@ -401,22 +513,26 @@ class PokerDataset(Dataset):
         #     print(past_actions_tensor.shape)
         #     print(game)
         
-        return past_actions_tensor, main_player_action_tensor
+        return past_actions_tensor, main_player_action_tensor, baseline_inputs, main_player_input_tensor
     
-    def __getitem__(self, index):
+    def process_item(self, index):
         player_pos = self.get_player_pos_tensor(self.main_player_name, index)
         hole_cards = self.get_hole_cards_tensor(self.main_player_name, index)
         #community_cards = self.get_community_cards_tensor("PREFLOP", index)
         main_player_index = round(player_pos.item()*self.max_pos)
         stack = self.games[index].players[main_player_index].stack
         stack = ((stack - self.stack_mean) / self.stack_std).unsqueeze(0)
-        past_actions_tensor, main_player_action_tensor = self.get_past_actions_tensor("PREFLOP", self.main_player_name, index)
+        past_actions_tensor, main_player_action_tensor, baseline_inputs, main_player_input_tensor = self.get_past_actions_tensor("PREFLOP", self.main_player_name, index)
         #return player_pos, hole_cards, stack, past_actions_tensor, main_player_action_tensor
-        input_tensor = torch.cat([player_pos, hole_cards, stack, past_actions_tensor], dim=0)
+        input_tensor = torch.cat([player_pos, hole_cards, stack, main_player_input_tensor, past_actions_tensor], dim=0)
         label_action_tensor = main_player_action_tensor[:-1]
         label_bet_size_tensor = main_player_action_tensor[-1:]
-        return input_tensor, label_action_tensor, label_bet_size_tensor
+        return input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs
     
+    def __getitem__(self, index):
+        b_i = self.balanced_indices[index]
+        return self.processed_outputs[b_i]
+        
     def _test_function(self):
         # see how many available options there are
         
@@ -447,7 +563,12 @@ class PokerDataset(Dataset):
 if __name__ == "__main__":
     filepath = r'C:\Users\kctak\Documents\Code\PokerAI\APS360 Progress\poker_data'
     poker_dataset = PokerDataset(filepath, "IlxxxlI")
-    print(poker_dataset.action_count)
+    print(len(poker_dataset))
+    print({action_name: len(indices) for action_name, indices in poker_dataset.output_indices.items()})
+    #print(poker_dataset[0])
+    poker_dataset._balance_data()
+    print(len(poker_dataset))
+    print({action_name: len(indices) for action_name, indices in poker_dataset.output_indices.items()})
     # print(poker_dataset[0])
     # test = []
     # for i in tqdm(range(len(poker_dataset))):

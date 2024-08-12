@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 class CustomFCNetwork(nn.Module):
-    def __init__(self, input_size = 223, hidden_shape = [90, 30], output_shapes = [11, 1], act_func = F.relu):
+    # Input size formerly 223
+    def __init__(self, input_size = 264, hidden_shape = [90, 30], output_shapes = [11, 1], act_func = F.relu):
         super(CustomFCNetwork, self).__init__()
         self.act_func = act_func
         
@@ -47,7 +48,7 @@ def get_accuracy(predicted, label_data):
 def train_per_epoch(model, optimizer, dataloader):
     model.train()
     total_loss, total_corr, total_num = 0, 0, 0
-    for input_tensor, action_label, bet_size_label in tqdm(dataloader, desc='Batches', leave=False):
+    for input_tensor, action_label, bet_size_label, baseline_inputs in tqdm(dataloader, desc='Batches', leave=False):
         action_output, bet_size = model(input_tensor)
         loss_action = nn.CrossEntropyLoss()(action_output, action_label)
         loss_bet_size = nn.MSELoss()(bet_size, bet_size_label)
@@ -67,7 +68,7 @@ def train_per_epoch(model, optimizer, dataloader):
 def evaluate(model, dataloader):
     model.eval()
     total_loss, total_corr, total_num = 0, 0, 0
-    for input_tensor, action_label, bet_size_label in tqdm(dataloader, desc='Evaluate', leave=False):
+    for input_tensor, action_label, bet_size_label, baseline_inputs in tqdm(dataloader, desc='Evaluate', leave=False):
         action_output, bet_size = model(input_tensor)
         loss_action = nn.CrossEntropyLoss()(action_output, action_label)
         loss_bet_size = nn.MSELoss()(bet_size, bet_size_label)
@@ -110,7 +111,7 @@ def train_with_hyperparameters(train_dataset, val_dataset, hidden_shape, learnin
     val_dataloader = DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=True)
     
     losses, accs = train(model, optimizer, train_dataloader, val_dataloader, num_epochs, display_progress)
-    return losses, accs
+    return losses, accs, model
 
 import itertools
 def tuning_hyperparameters(train_dataset, val_dataset, batch_sizes=None, learning_rates=None, hidden_shapes=None, num_epochs=20):
@@ -126,7 +127,7 @@ def tuning_hyperparameters(train_dataset, val_dataset, batch_sizes=None, learnin
     labels = []
 
     # Test model for each combination of hyperparameters
-    for hps_comb in itertools.product(*tuning_hps):
+    for hps_comb in tqdm(itertools.product(*tuning_hps), desc='Hyperparameters', leave=True):
         index = 0
 
         batch_size, learning_rate, hidden_shape, num_epochs = 64, 0.001, [128, 64], 50
@@ -145,7 +146,7 @@ def tuning_hyperparameters(train_dataset, val_dataset, batch_sizes=None, learnin
             index += 1
 
         # Store training curve data
-        losses, accs = train_with_hyperparameters(train_dataset, val_dataset, hidden_shape, learning_rate, batch_size, num_epochs)
+        losses, accs, model = train_with_hyperparameters(train_dataset, val_dataset, hidden_shape, learning_rate, batch_size, num_epochs)
         acc_graphs.append((accs['Train'], accs['Validation']))
         labels.append(f"Batch Size: {batch_size}, Learning Rate: {learning_rate},\n Hidden Size: {hidden_shape}")
 

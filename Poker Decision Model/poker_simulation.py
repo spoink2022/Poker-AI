@@ -163,7 +163,7 @@ class TexasHoldemPokerGame():
         self.end_game(winning_player)
 
 class PokerProbabilityCalculator():
-    def __init__(self, hole_cards, community_cards, num_players, num_simulations):
+    def __init__(self, hole_cards = [], community_cards = [], num_players = None, num_simulations = 1000):
         self.hole_cards = hole_cards
         self.community_cards = community_cards
         self.num_players = num_players
@@ -173,7 +173,7 @@ class PokerProbabilityCalculator():
         for card in self.hole_cards + self.community_cards:
             self.deck.remove(card)
             
-    def reset(self, hole_cards = None, community_cards = None, num_players = None, num_simulations = None):
+    def set(self, hole_cards = None, community_cards = None, num_players = None, num_simulations = None):
         self.hole_cards = self.hole_cards if hole_cards is None else hole_cards
         self.community_cards = self.community_cards if community_cards is None else community_cards
         self.num_players = self.num_players if num_players is None else num_players
