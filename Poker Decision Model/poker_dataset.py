@@ -80,7 +80,7 @@ class PokerRound():
                 self.pot_size += float(bet_size)
                 self.round_call_amount = player.round_bet_size[round_name] if player.round_bet_size[round_name] > self.round_call_amount else self.round_call_amount
                 
-    def __repr__(self):
+    def display_round(self):
         display = f"{self.round_data['name']}:\n"
         for player_name, action_name, bet_size, poker_state in self.round_info:
             if bet_size is None:
@@ -90,7 +90,7 @@ class PokerRound():
         display += "\n"
         return display
     
-    def display_round(self):
+    def __repr__(self):
         display = f"{self.round_data['name']}:\n"
         for player_name, action_name, bet_size, poker_state in self.round_info:
             if bet_size is None:
