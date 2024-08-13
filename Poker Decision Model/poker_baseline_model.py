@@ -1,4 +1,4 @@
-
+from poker_simulation import PokerProbabilityCalculator
 
 def bet_size_function(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, profit):
     avg_tied_cost_rate = tie_rate / avg_tied_players
@@ -41,6 +41,24 @@ def get_bet_size(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call
             return 'checks', 0
         
     return 'folds', 0
+
+def baseline_model(baseline_inputs, tight_factor = 0, num_simulations=1000):
+    # baseline_inputs are dataloader inputs
+    
+    call_size = baseline_inputs['call_size'].item()
+    pot_size = baseline_inputs['pot_size'].item()
+    stack_size = baseline_inputs['stack_size'].item()
+    min_raise = baseline_inputs['min_raise'].item()
+    hole_cards = [card[0] for card in baseline_inputs['hole_cards']]
+    community_cards = [card[0] for card in baseline_inputs['community_cards']]
+    num_players = baseline_inputs['num_players'].item()
+    
+    poker_calc = PokerProbabilityCalculator(hole_cards, community_cards, num_players, num_simulations)
+    win_rate, lose_rate, tie_rate, avg_tied_players = poker_calc.poker_probability_calculator()
+    
+    action_name, bet_size = get_bet_size(win_rate, lose_rate, tie_rate, avg_tied_players, pot_size, call_size, stack_size, min_raise, tight_factor=tight_factor)
+    
+    return action_name, bet_size
 
 
     

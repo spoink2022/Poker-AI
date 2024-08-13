@@ -170,8 +170,11 @@ class PokerProbabilityCalculator():
         self.num_simulations = num_simulations
         
         self.deck = CARDS.copy()
-        for card in self.hole_cards + self.community_cards:
-            self.deck.remove(card)
+        try: 
+            for card in self.hole_cards + self.community_cards:
+                self.deck.remove(card)
+        except:
+            raise ValueError(f"Invalid cards {self.hole_cards + self.community_cards}\n {self.deck}")
             
     def set(self, hole_cards = None, community_cards = None, num_players = None, num_simulations = None):
         self.hole_cards = self.hole_cards if hole_cards is None else hole_cards
@@ -179,10 +182,13 @@ class PokerProbabilityCalculator():
         self.num_players = self.num_players if num_players is None else num_players
         self.num_simulations = self.num_simulations if num_simulations is None else num_simulations
         
-        if community_cards is not None or hole_cards is not None:
-            self.deck = CARDS.copy()
-            for card in self.hole_cards + self.community_cards:
-                self.deck.remove(card)
+        try:
+            if community_cards is not None or hole_cards is not None:
+                self.deck = CARDS.copy()
+                for card in self.hole_cards + self.community_cards:
+                    self.deck.remove(card)
+        except:
+            raise ValueError(f"Invalid cards {self.hole_cards + self.community_cards}\n {self.deck}")
             
     def poker_probability_calculator(self):
         if len(self.hole_cards) != 2:
