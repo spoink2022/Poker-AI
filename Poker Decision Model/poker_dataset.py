@@ -86,6 +86,16 @@ class PokerRound():
             if bet_size is None:
                 display += f"{player_name} {action_name}\n"
             else:
+                display += f"{player_name} {action_name} {bet_size}"
+        display += "\n"
+        return display
+    
+    def display_round(self):
+        display = f"{self.round_data['name']}:\n"
+        for player_name, action_name, bet_size, poker_state in self.round_info:
+            if bet_size is None:
+                display += f"{player_name} {action_name}\n"
+            else:
                 display += f"{player_name} {action_name} {bet_size} \n{poker_state}\n"
         display += "\n"
         return display
