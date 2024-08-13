@@ -58,6 +58,9 @@ class ModelInputOutputRecord:
         self.baseline_inputs = baseline_inputs
         self.game_idx = game_idx
         
+        self.model_bet_size_loss = (model_bet_size - bet_size_label)^2
+        self.baseline_bet_size_loss = (baseline_bet_size - bet_size_label)^2
+        
     def display(self, dataset):
         game = dataset.games[self.game_idx]
         
