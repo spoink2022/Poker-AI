@@ -286,7 +286,7 @@ class PokerDataset(Dataset):
             if action_name not in include_actions:
                 continue
             
-            output_datum = (input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs)
+            output_datum = (input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs, i)
             self.processed_outputs.append(output_datum)
             
             self.output_indices[action_name].append(index)
@@ -531,7 +531,8 @@ class PokerDataset(Dataset):
     
     def __getitem__(self, index):
         b_i = self.balanced_indices[index]
-        return self.processed_outputs[b_i]
+        input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs, game_idx = self.processed_outputs[b_i]
+        return input_tensor, label_action_tensor, label_bet_size_tensor, baseline_inputs, game_idx
         
     def _test_function(self):
         # see how many available options there are

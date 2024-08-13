@@ -48,7 +48,7 @@ def get_accuracy(predicted, label_data):
 def train_per_epoch(model, optimizer, dataloader):
     model.train()
     total_loss, total_corr, total_num = 0, 0, 0
-    for input_tensor, action_label, bet_size_label, baseline_inputs in tqdm(dataloader, desc='Batches', leave=False):
+    for input_tensor, action_label, bet_size_label, baseline_inputs, game_idx in tqdm(dataloader, desc='Batches', leave=False):
         action_output, bet_size = model(input_tensor)
         loss_action = nn.CrossEntropyLoss()(action_output, action_label)
         loss_bet_size = nn.MSELoss()(bet_size, bet_size_label)
@@ -68,7 +68,7 @@ def train_per_epoch(model, optimizer, dataloader):
 def evaluate(model, dataloader):
     model.eval()
     total_loss, total_corr, total_num = 0, 0, 0
-    for input_tensor, action_label, bet_size_label, baseline_inputs in tqdm(dataloader, desc='Evaluate', leave=False):
+    for input_tensor, action_label, bet_size_label, baseline_inputs, game_idx in tqdm(dataloader, desc='Evaluate', leave=False):
         action_output, bet_size = model(input_tensor)
         loss_action = nn.CrossEntropyLoss()(action_output, action_label)
         loss_bet_size = nn.MSELoss()(bet_size, bet_size_label)
